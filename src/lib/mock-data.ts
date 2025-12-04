@@ -32,6 +32,15 @@ export interface ProcedureTemplate {
   tags: string[];
 }
 
+// Surgeon-specific preferences for a given procedure.
+// In a real app this would live in a backend; here it's mock data so nurses
+// can see how equipment changes when a particular surgeon is assigned.
+export interface SurgeonPreference {
+  surgeonId: string;
+  procedureId: string;
+  items: ProcedureItem[];
+}
+
 export interface RoomObject {
   id: string;
   type: string;
@@ -121,11 +130,40 @@ export const procedures: ProcedureTemplate[] = [
   },
 ];
 
+// Example surgeon-specific equipment preferences for procedures.
+// These override or extend the base procedure template when that surgeon is assigned.
+export const surgeonPreferences: SurgeonPreference[] = [
+  {
+    surgeonId: '1', // Dr. Sarah Chen
+    procedureId: '1', // Laparoscopic Cholecystectomy
+    items: [
+      { id: 'i1', name: 'Laparoscope 10mm', category: 'Instrument', quantity: 1, critical: true },
+      { id: 'i2', name: 'Trocar Set', category: 'Instrument', quantity: 1, critical: true },
+      // Prefers an extra grasper
+      { id: 'i3', name: 'Grasper Maryland', category: 'Instrument', quantity: 3, critical: false },
+      // Drops the specimen bag that is often unused
+    ],
+  },
+  {
+    surgeonId: '2', // Dr. James Wilson
+    procedureId: '2', // Total Hip Replacement
+    items: [
+      { id: 'i7', name: 'Hip Prosthesis Set', category: 'Device', quantity: 1, critical: true },
+      { id: 'i8', name: 'Bone Cement', category: 'Misc', quantity: 3, critical: true },
+      { id: 'i9', name: 'Reamer Set', category: 'Instrument', quantity: 1, critical: true },
+      { id: 'i10', name: 'Retractor Set', category: 'Instrument', quantity: 2, critical: false },
+    ],
+  },
+];
+
 export const rooms: RoomLayout[] = [
   {
     id: '1',
     name: 'Theatre 1',
     theatreNumber: 'T1',
+    // Link to Dr James Wilson's hip replacement so nurses see his specific kit
+    procedureTemplateId: '2',
+    surgeonId: '2',
     status: 'in-use',
     objects: [
       { id: 'o1', type: 'table', label: 'Operating Table', x: 300, y: 200, rotation: 0 },
@@ -138,6 +176,8 @@ export const rooms: RoomLayout[] = [
     id: '2',
     name: 'Theatre 2',
     theatreNumber: 'T2',
+    procedureTemplateId: '1',
+    surgeonId: '1',
     status: 'available',
     objects: [
       { id: 'o5', type: 'table', label: 'Operating Table', x: 300, y: 200, rotation: 0 },

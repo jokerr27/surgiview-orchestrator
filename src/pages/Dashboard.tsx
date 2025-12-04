@@ -5,34 +5,44 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { todaysLists, metrics } from '@/lib/mock-data';
-import { 
-  Clock, 
-  Calendar, 
-  AlertTriangle, 
+import {
+  Clock,
+  Calendar,
+  AlertTriangle,
   Timer,
   Plus,
   DoorOpen,
   CheckSquare,
-  BarChart3
+  BarChart3,
 } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { currentRole, userName } = useAppContext();
 
+  // Simple "my stats" view for surgeons using mock data
+  const mySetupStat = metrics.surgeonSetupTimes[0];
+  const myCasesToday = todaysLists.filter((list) =>
+    list.surgeonName.includes('Chen'),
+  ).length;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome back, {userName.split(' ')[0]}
+          {currentRole === 'surgeon'
+            ? 'Your theatre performance'
+            : `Welcome back, ${userName.split(' ')[0]}`}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Here's what's happening in your theatres today
+          {currentRole === 'surgeon'
+            ? 'A quick view of your lists and setup performance today'
+            : "Here's what's happening in your theatres today"}
         </p>
       </div>
 
-      {/* Metrics - Show for Manager role */}
+      {/* Metrics */}
       {currentRole === 'manager' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
@@ -65,16 +75,44 @@ export default function Dashboard() {
         </div>
       )}
 
+      {currentRole === 'surgeon' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <MetricCard
+            title="Your Avg Setup Time"
+            value={`${mySetupStat.time} min`}
+            subtitle={mySetupStat.name}
+            icon={Clock}
+            trend="down"
+            trendValue="vs. theatre average"
+          />
+          <MetricCard
+            title="Your Cases Today"
+            value={myCasesToday}
+            icon={Calendar}
+          />
+          <MetricCard
+            title="Lists In Progress"
+            value={
+              todaysLists.filter((list) => list.status === 'in-progress').length
+            }
+            icon={Timer}
+          />
+        </div>
+      )}
+
       {/* Quick Actions */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-medium">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          <Button onClick={() => navigate('/procedures/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Preference
-          </Button>
+          {/* Only managers define global preferences */}
+          {currentRole === 'manager' && (
+            <Button onClick={() => navigate('/procedures/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Preference
+            </Button>
+          )}
           <Button variant="outline" onClick={() => navigate('/rooms')}>
             <DoorOpen className="mr-2 h-4 w-4" />
             Visual Room Setup
@@ -95,7 +133,9 @@ export default function Dashboard() {
       {/* Today's Lists */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium">Today's Lists</CardTitle>
+          <CardTitle className="text-base font-medium">
+            {currentRole === 'surgeon' ? 'Your lists today' : "Today's Lists"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-border overflow-hidden">
@@ -110,8 +150,8 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {todaysLists.map((item, idx) => (
-                  <tr 
+                {todaysLists.map((item) => (
+                  <tr
                     key={item.id}
                     className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
                     onClick={() => navigate(`/rooms/${item.theatreNumber}`)}

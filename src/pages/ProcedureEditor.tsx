@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,23 +14,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { procedures, rooms, ProcedureItem } from '@/lib/mock-data';
+import { procedures, rooms, ProcedureItem, surgeons } from '@/lib/mock-data';
 import { ArrowLeft, Plus, Trash2, AlertCircle, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAppContext } from '@/contexts/AppContext';
 
 export default function ProcedureEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isNew = id === 'new';
-  
-  const existingProcedure = !isNew ? procedures.find(p => p.id === id) : null;
-  
+  const { currentRole, surgeonPreferences, setSurgeonPreferences } = useAppContext();
+  const existingProcedure = !isNew ? procedures.find((p) => p.id === id) : null;
+
+  // In this mock, treat Dr James Wilson as the logged-in surgeon
+  const currentSurgeon =
+    surgeons.find((s) => s.name === 'Dr. James Wilson') ?? surgeons[0];
+
+  const surgeonPreference = useMemo(
+    () =>
+      currentRole === 'surgeon' && existingProcedure
+        ? surgeonPreferences.find(
+            (pref) =>
+              pref.surgeonId === currentSurgeon.id &&
+              pref.procedureId === existingProcedure.id,
+          )
+        : undefined,
+    [currentRole, existingProcedure, currentSurgeon.id],
+  );
+
   const [name, setName] = useState(existingProcedure?.name || '');
   const [specialty, setSpecialty] = useState(existingProcedure?.specialty || '');
   const [positioning, setPositioning] = useState(existingProcedure?.positioning || '');
   const [notes, setNotes] = useState(existingProcedure?.notes || '');
   const [linkedRoom, setLinkedRoom] = useState(existingProcedure?.roomLayoutId || '');
-  const [items, setItems] = useState<ProcedureItem[]>(existingProcedure?.items || []);
+  const [items, setItems] = useState<ProcedureItem[]>(
+    surgeonPreference?.items || existingProcedure?.items || [],
+  );
 
   const addItem = () => {
     const newItem: ProcedureItem = {
@@ -54,6 +73,27 @@ export default function ProcedureEditor() {
   };
 
   const handleSave = () => {
+    // When a surgeon edits a procedure, persist their personal list
+    if (currentRole === 'surgeon' && existingProcedure) {
+      const updated = [...surgeonPreferences];
+      const idx = updated.findIndex(
+        (pref) =>
+          pref.surgeonId === currentSurgeon.id &&
+          pref.procedureId === existingProcedure.id,
+      );
+      const newPref = {
+        surgeonId: currentSurgeon.id,
+        procedureId: existingProcedure.id,
+        items,
+      };
+      if (idx >= 0) {
+        updated[idx] = newPref;
+      } else {
+        updated.push(newPref);
+      }
+      setSurgeonPreferences(updated);
+    }
+
     toast.success('Procedure saved successfully');
     navigate('/procedures');
   };
@@ -67,10 +107,16 @@ export default function ProcedureEditor() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            {isNew ? 'New Procedure' : 'Edit Procedure'}
+            {currentRole === 'surgeon'
+              ? 'Your preference for this procedure'
+              : isNew
+              ? 'New Procedure'
+              : 'Edit Procedure'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Configure procedure details and preference items
+            {currentRole === 'surgeon'
+              ? 'Adjust the instruments and items you prefer for this surgery'
+              : 'Configure procedure details and preference items'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -91,7 +137,11 @@ export default function ProcedureEditor() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-medium">Items & Instruments</CardTitle>
+                <CardTitle className="text-base font-medium">
+                  {currentRole === 'surgeon'
+                    ? 'Your items & instruments'
+                    : 'Items & Instruments'}
+                </CardTitle>
                 <Button size="sm" onClick={addItem}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Item

@@ -9,8 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { metrics, surgeons, procedures } from '@/lib/mock-data';
-import { Clock, Calendar, AlertTriangle, Timer, Download } from 'lucide-react';
+import { metrics, procedures } from '@/lib/mock-data';
+import { Clock, Calendar, AlertTriangle, Timer, Download, ShieldAlert } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -22,10 +22,27 @@ import {
   LineChart,
   Line,
 } from 'recharts';
+import { useAppContext } from '@/contexts/AppContext';
 
 export default function Analytics() {
   const [dateRange, setDateRange] = useState('7days');
   const [selectedTheatre, setSelectedTheatre] = useState('all');
+  const { currentRole } = useAppContext();
+
+  // Managers only: this page shows global, cross-surgeon analytics
+  if (currentRole !== 'manager') {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <ShieldAlert className="h-5 w-5 text-destructive" />
+          <h1 className="text-2xl font-semibold tracking-tight">Analytics restricted</h1>
+        </div>
+        <p className="text-muted-foreground">
+          General theatre analytics are only available to managers. Switch to the manager role to view these insights.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -34,7 +51,7 @@ export default function Analytics() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
           <p className="text-muted-foreground mt-1">
-            Performance metrics and insights
+            Performance metrics and insights across all theatres
           </p>
         </div>
         <div className="flex gap-3">
@@ -112,8 +129,8 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" width={80} />
-                  <Tooltip 
-                    contentStyle={{ 
+                  <Tooltip
+                    contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
@@ -138,17 +155,17 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip 
-                    contentStyle={{ 
+                  <Tooltip
+                    contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
                     }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="time" 
-                    stroke="hsl(var(--primary))" 
+                  <Line
+                    type="monotone"
+                    dataKey="time"
+                    stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     dot={{ fill: 'hsl(var(--primary))' }}
                   />

@@ -4,27 +4,44 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DataTable } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { surgeons } from '@/lib/mock-data';
-import { Search } from 'lucide-react';
+import { Search, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
+import { useAppContext } from '@/contexts/AppContext';
 
 export default function Surgeons() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const { currentRole } = useAppContext();
 
-  const filteredSurgeons = surgeons.filter(s => 
+  // Hard gate: only managers can view surgeon waste scores and profiles
+  if (currentRole !== 'manager') {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <ShieldAlert className="h-5 w-5 text-destructive" />
+          <h1 className="text-2xl font-semibold tracking-tight">Access restricted</h1>
+        </div>
+        <p className="text-muted-foreground">
+          Only managers can view surgeon waste scores and profiles.
+        </p>
+      </div>
+    );
+  }
+
+  const filteredSurgeons = surgeons.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.specialty.toLowerCase().includes(search.toLowerCase())
+    s.specialty.toLowerCase().includes(search.toLowerCase()),
   );
 
   const columns = [
-    { 
-      key: 'name', 
+    {
+      key: 'name',
       header: 'Surgeon',
       render: (s: typeof surgeons[0]) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-primary/10 text-primary text-sm">
-              {s.name.split(' ').slice(1).map(n => n[0]).join('')}
+              {s.name.split(' ').slice(1).map((n) => n[0]).join('')}
             </AvatarFallback>
           </Avatar>
           <div>
@@ -32,16 +49,14 @@ export default function Surgeons() {
             <p className="text-sm text-muted-foreground">{s.specialty}</p>
           </div>
         </div>
-      )
+      ),
     },
     { key: 'procedureCount', header: 'Procedures' },
     { key: 'lastUpdated', header: 'Last Updated' },
-    { 
-      key: 'wasteScore', 
+    {
+      key: 'wasteScore',
       header: 'Waste Score',
-      render: (s: typeof surgeons[0]) => (
-        <StatusBadge status={s.wasteScore} />
-      )
+      render: (s: typeof surgeons[0]) => <StatusBadge status={s.wasteScore} />,
     },
   ];
 

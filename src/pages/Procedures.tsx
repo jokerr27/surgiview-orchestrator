@@ -3,46 +3,65 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/shared/DataTable';
-import { procedures } from '@/lib/mock-data';
+import { procedures, surgeons } from '@/lib/mock-data';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
+import { useAppContext } from '@/contexts/AppContext';
 
 export default function Procedures() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const { currentRole, surgeonPreferences } = useAppContext();
 
-  const filteredProcedures = procedures.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.specialty.toLowerCase().includes(search.toLowerCase())
+  // In this mock, treat Dr James Wilson as the logged-in surgeon when viewing as surgeon
+  const currentSurgeon =
+    surgeons.find((s) => s.name === 'Dr. James Wilson') ?? surgeons[0];
+
+  const visibleProcedures = procedures;
+
+  const filteredProcedures = visibleProcedures.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.specialty.toLowerCase().includes(search.toLowerCase()),
   );
 
   const columns = [
-    { 
-      key: 'name', 
+    {
+      key: 'name',
       header: 'Procedure Name',
       render: (p: typeof procedures[0]) => (
         <div>
           <p className="font-medium">{p.name}</p>
           <div className="flex gap-1 mt-1">
-            {p.tags.map(tag => (
+            {p.tags.map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs">
                 {tag}
               </Badge>
             ))}
           </div>
         </div>
-      )
+      ),
     },
     { key: 'specialty', header: 'Specialty' },
-    { 
-      key: 'items', 
+    {
+      key: 'items',
       header: 'Items',
-      render: (p: typeof procedures[0]) => p.items.length
+      render: (p: typeof procedures[0]) => p.items.length,
     },
-    { 
-      key: 'surgeonIds', 
-      header: 'Surgeons',
-      render: (p: typeof procedures[0]) => p.surgeonIds.length
+    {
+      key: 'surgeonIds',
+      header: currentRole === 'surgeon' ? 'Linked to you' : 'Surgeons',
+      render: (p: typeof procedures[0]) => {
+        if (currentRole === 'surgeon') {
+          const hasPref = surgeonPreferences.some(
+            (pref) =>
+              pref.surgeonId === currentSurgeon.id &&
+              pref.procedureId === p.id,
+          );
+          return hasPref ? 'Yes' : 'No';
+        }
+        return p.surgeonIds.length;
+      },
     },
     { key: 'lastUpdated', header: 'Last Updated' },
   ];
@@ -52,15 +71,21 @@ export default function Procedures() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Procedures</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {currentRole === 'surgeon' ? 'Your procedures' : 'Procedures'}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Manage procedure templates and preference sets
+            {currentRole === 'surgeon'
+              ? 'Click a procedure to add or edit your personal equipment list'
+              : 'Manage procedure templates and preference sets'}
           </p>
         </div>
-        <Button onClick={() => navigate('/procedures/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Procedure
-        </Button>
+        {currentRole === 'manager' && (
+          <Button onClick={() => navigate('/procedures/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Procedure
+          </Button>
+        )}
       </div>
 
       {/* Search */}

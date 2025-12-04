@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { rooms } from '@/lib/mock-data';
+import { rooms, procedures, surgeonPreferences, surgeons } from '@/lib/mock-data';
 import { 
   Upload, 
   CheckCircle2, 
@@ -18,6 +18,7 @@ import {
   Camera
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface CheckResult {
   name: string;
@@ -30,6 +31,7 @@ export default function SetupCheck() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<CheckResult[] | null>(null);
+  const { currentRole, surgeonPreferences: surgeonPrefsState } = useAppContext();
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,11 +76,31 @@ export default function SetupCheck() {
     }
   };
 
-  const summary = results ? {
-    matched: results.filter(r => r.status === 'matched').length,
-    misplaced: results.filter(r => r.status === 'misplaced').length,
-    missing: results.filter(r => r.status === 'missing').length,
-  } : null;
+  const summary = results
+    ? {
+        matched: results.filter((r) => r.status === 'matched').length,
+        misplaced: results.filter((r) => r.status === 'misplaced').length,
+        missing: results.filter((r) => r.status === 'missing').length,
+      }
+    : null;
+
+  const room = rooms.find((r) => r.id === selectedRoom);
+  const linkedProcedure = room?.procedureTemplateId
+    ? procedures.find((p) => p.id === room.procedureTemplateId)
+    : undefined;
+  const linkedSurgeon = room?.surgeonId
+    ? surgeons.find((s) => s.id === room.surgeonId)
+    : undefined;
+
+  const surgeonPref = linkedSurgeon && linkedProcedure
+    ? surgeonPrefsState.find(
+        (pref) =>
+          pref.surgeonId === linkedSurgeon.id &&
+          pref.procedureId === linkedProcedure.id,
+      )
+    : undefined;
+
+  const effectiveItems = surgeonPref?.items ?? linkedProcedure?.items ?? [];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -123,7 +145,7 @@ export default function SetupCheck() {
                     }}
                   >
                     {/* Show room objects preview */}
-                    {rooms.find(r => r.id === selectedRoom)?.objects.map(obj => (
+                    {rooms.find((r) => r.id === selectedRoom)?.objects.map((obj) => (
                       <div
                         key={obj.id}
                         className="absolute w-12 h-12 rounded border border-primary/30 bg-primary/10 flex items-center justify-center"
@@ -145,6 +167,49 @@ export default function SetupCheck() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Surgeon-specific equipment list for nurses/managers */}
+        {(currentRole === 'nurse' || currentRole === 'manager') && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-medium">
+                {linkedSurgeon && linkedProcedure
+                  ? `${linkedSurgeon.name}'s preference for ${linkedProcedure.name}`
+                  : 'Surgeon preference list'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedRoom && linkedProcedure ? (
+                effectiveItems.length > 0 ? (
+                  <div className="rounded-lg border border-border divide-y">
+                    {effectiveItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between px-3 py-2 text-sm"
+                      >
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.category} • Qty {item.quantity}
+                            {item.critical ? ' • Critical' : ''}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No specific surgeon preference list defined. Showing base procedure kit.
+                  </p>
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Select a room that has an assigned procedure and surgeon to view their kit.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upload Area */}
         <Card>
